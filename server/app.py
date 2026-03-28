@@ -15,6 +15,12 @@ app = create_fastapi_app(ApocalyptoEnvironment, ApocalyptoAction, ApocalyptoObse
 
 @app.post("/baseline")
 def run_baseline_endpoint():
+    if not os.environ.get("OPENAI_API_KEY"):
+        return {
+            "status": "error",
+            "message": "OPENAI_API_KEY not configured. Set it in HF Space secrets.",
+            "baseline_score": 0.0
+        }
     try:
         from .environment import ApocalyptoEnvironment
         import inference as baseline # Local import is safer if renamed

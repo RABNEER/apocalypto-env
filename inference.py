@@ -11,12 +11,14 @@ from server.environment import ApocalyptoEnvironment
 from models import ApocalyptoAction
 
 # Official required env var names — do not rename these
-client = OpenAI(
-    api_key=os.environ["OPENAI_API_KEY"],
-    base_url=os.environ.get("API_BASE_URL", "https://api.groq.com/openai/v1")
-)
-MODEL = os.environ.get("MODEL_NAME", "llama3-8b-8192")
-HF_TOKEN = os.environ.get("HF_TOKEN", "")  # Required by spec
+def get_client():
+    return OpenAI(
+        api_key=os.environ.get("OPENAI_API_KEY", ""),
+        base_url=os.environ.get("API_BASE_URL", "https://api.groq.com/openai/v1")
+    )
+
+def get_model():
+    return os.environ.get("MODEL_NAME", "llama-3.1-8b-instant")
 
 SYSTEM_PROMPT = """You are an AI agent interacting with Apocalypto-Env, a scam detection RL environment.
 You will receive an observation JSON and must respond with a valid action JSON.
@@ -54,8 +56,8 @@ You MUST respond with task_id {current_task} schema only.
 Observation:
 {json.dumps(obs.model_dump(), indent=2)}"""
 
-        response = client.chat.completions.create(
-            model=MODEL,
+        response = get_client().chat.completions.create(
+            model=get_model(),
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_content}
@@ -104,8 +106,8 @@ Observation:
 
 if __name__ == "__main__":
     print("Running Apocalypto-Env baseline (inference.py)...")
-    print(f"Model: {MODEL}")
-    print(f"API Base: {client.base_url}")
+    print(f"Model: {get_model()}")
+    print(f"API Base: {os.environ.get('API_BASE_URL', 'https://api.groq.com/openai/v1')}")
     print("-" * 40)
 
     env = ApocalyptoEnvironment()
