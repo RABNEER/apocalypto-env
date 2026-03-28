@@ -42,6 +42,7 @@ class ApocalyptoObservation(BaseModel):
     turns_remaining: Optional[int] = None   # Task 3 only
     suspicion_level: Optional[str] = None   # Task 3 only: low / medium / high / blown
     done: bool = False
+    reward: float = 0.0
     info: dict = Field(default_factory=dict)
 
 # ── STATE ────────────────────────────────────────────────────────────────────
