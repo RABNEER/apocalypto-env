@@ -1,3 +1,19 @@
 name: apocalypto-env
 version: "1.0.0"
 description: Meta × HuggingFace OpenEnv Hackathon India submission. Multi-turn financial scam detection, intelligence extraction, and adversarial engagement environment.
+tags:
+  - scam-detection
+  - fraud
+  - india
+  - multi-turn
+  - adversarial
+tasks:
+  - id: 1
+    name: classify
+    difficulty: easy
+  - id: 2
+    name: extract
+    difficulty: medium
+  - id: 3
+    name: engage
+    difficulty: hard

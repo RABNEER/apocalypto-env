@@ -1,3 +1,14 @@
+---
+title: Apocalypto-Env
+emoji: 🏆
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+license: apache-2.0
+---
+
 # 🏆 Apocalypto-Env
 
 **Chosen Problem Statement: Adversarial Social Engineering and Fraud Detection (real-world safety/fraud domain)**
