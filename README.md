@@ -1,10 +1,13 @@
 # 🏆 Apocalypto-Env
 
-**Chosen Problem Statement: Adversarial Social Engineering and Fraud Detection (real-world safety/fraud domain)**
+**Meta × Hugging Face OpenEnv Hackathon India | Round 1 Submission**
 
-**Meta × HuggingFace OpenEnv Hackathon India | Round 1 Submission**
+**Problem Statement**: Build a complete, real-world OpenEnv environment for training agentic AI agents (as per Round 1 guidelines)
 
-An RL environment that trains AI agents to classify, extract artifacts from, and adversarially engage with simulated Indian financial scammers — built to tackle India's ₹11,000 Crore digital fraud epidemic.
+**Chosen Domain**: Adversarial Social Engineering and Fraud Detection  
+(focused on financial scam detection in India's UPI ecosystem)
+
+An RL environment that trains AI agents to classify, extract artifacts from, and safely engage with simulated Indian financial scammers — addressing India's ₹11,000 Crore digital fraud epidemic.
 
 [![OpenEnv](https://img.shields.io/badge/OpenEnv-Compliant-blue)](https://github.com/meta-pytorch/OpenEnv)
 [![Python](https://img.shields.io/badge/Python-3.10+-green)](https://python.org)
