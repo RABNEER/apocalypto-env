@@ -12,7 +12,8 @@ COPY . .
 # Set environment variables for HF Spaces
 ENV PORT=7860
 ENV HOST=0.0.0.0
+ENV PYTHONPATH=.
 EXPOSE 7860
 
-# Run the FastAPI server natively
-CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860"]
+# Run the FastAPI server as a module to resolve relative imports
+CMD ["python", "-m", "server.app"]
