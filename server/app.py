@@ -58,9 +58,12 @@ def run_grader(payload: dict):
 
 import uvicorn
 
-if __name__ == "__main__":
+def main():
     # Get host/port from env for production robustness
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", 7860))
     # Disable reload in production for performance
     uvicorn.run("server.app:app", host=host, port=port, reload=False)
+
+if __name__ == "__main__":
+    main()
