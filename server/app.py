@@ -38,7 +38,7 @@ def _obs_response(obs):
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "healthy"}
 
 @app.post("/reset")
 def reset_env():
