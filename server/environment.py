@@ -41,6 +41,9 @@ class ApocalyptoEnvironment(Environment):
 
     def step(self, action: ApocalyptoAction) -> ApocalyptoObservation:
         """Processes one action and advances the episode state."""
+        if not self._state_data:
+            raise ValueError("Environment must be reset() before calling step().")
+            
         if self._state_data.done:
             raise ValueError("Episode is already done.")
             

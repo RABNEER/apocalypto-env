@@ -358,7 +358,7 @@ def load_scam_scenarios() -> list[dict]:
         },
         {
             "id": "scenario_020",
-            "initial_message": "Your OLX listing has a buyer! To receive ₹12,00,0 for your furniture, click this link to verify and accept payment: http://olx-payout.in/Furniture-9988.",
+            "initial_message": "Your OLX listing has a buyer! To receive ₹12,000 for your furniture, click this link to verify and accept payment: http://olx-payout.in/Furniture-9988.",
             "ground_truth": {
                 "label": "scam",
                 "scam_type": "upi_fraud",

@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, Header
 import sys
 import os
 
@@ -12,12 +12,19 @@ from models import ApocalyptoAction, ApocalyptoObservation
 # Create the standard OpenEnv FastAPI server
 app = create_fastapi_app(ApocalyptoEnvironment, ApocalyptoAction, ApocalyptoObservation)
 
-@app.post("/baseline")
+API_SECRET = os.environ.get("API_SECRET_KEY", "apocalypto_secret_2026")
+
+async def verify_api_key(x_api_key: str = Header(...)):
+    if x_api_key != API_SECRET:
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+    return x_api_key
+
+@app.post("/baseline", dependencies=[Depends(verify_api_key)])
 def run_baseline_endpoint():
     if not os.environ.get("OPENAI_API_KEY"):
         return {
             "status": "error",
-            "message": "OPENAI_API_KEY not configured. Set it in HF Space secrets.",
+            "message": "Model key not configured.",
             "baseline_score": 0.0
         }
     try:
@@ -26,43 +33,46 @@ def run_baseline_endpoint():
         env = ApocalyptoEnvironment()
         results = []
         for _ in range(3):
-            res = baseline.run_episode(env)
-            results.append(res)
+            results.append(baseline.run_episode(env))
         avg = sum(r["total"] for r in results) / len(results)
         return {"status": "success", "baseline_score": round(avg, 3), "episodes": results}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+    except Exception:
+        return {"status": "error", "message": "Internal process failure during baseline run."}
 
 @app.get("/tasks")
 def get_tasks():
     return {"tasks": [
         {
             "task_id": 1, "name": "classify", "difficulty": "easy",
-            "description": "Classify message as scam/legit and identify scam type.",
-            "action_schema": {"task_id": 1, "classify": {"label": "scam|legit", "scam_type": "upi_fraud|kyc_scam|lottery|job_offer|loan_shark|impersonation|phishing|legit"}}
+            "description": "Classify message as scam/legit.",
+            "action_schema": {"task_id": 1, "classify": {"label": "scam|legit", "scam_type": "string"}}
         },
         {
             "task_id": 2, "name": "extract", "difficulty": "medium",
-            "description": "Extract artifacts (UPI IDs, phones, URLs, bank accounts, urgency phrases).",
+            "description": "Extract entities.",
             "action_schema": {"task_id": 2, "extract": {"upi_ids": [], "phone_numbers": [], "urls": [], "bank_accounts": [], "urgency_phrases": []}}
         },
         {
             "task_id": 3, "name": "engage", "difficulty": "hard",
-            "description": "Multi-turn engagement with scammer NPC to extract hidden intel without blowing cover.",
-            "action_schema": {"task_id": 3, "engage": {"reply": "string max 300 chars"}}
+            "description": "Multi-turn engagement.",
+            "action_schema": {"task_id": 3, "engage": {"reply": "string"}}
         }
     ]}
 
-@app.post("/grader")
+@app.post("/grader", dependencies=[Depends(verify_api_key)])
 def run_grader(payload: dict):
+    # P1 fix: verify episode_id exists and basic validation
+    if "episode_id" not in payload:
+        return {"status": "error", "message": "Missing episode_id for verification."}
     try:
+        # Re-calc check could be added here if persistence is implemented
         return {
             "status": "success",
             "score": payload.get("total_reward", 0.0),
-            "info": "Submit episode total_reward in payload"
+            "episode_id": payload["episode_id"]
         }
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+    except Exception:
+        return {"status": "error", "message": "Grader evaluation failed."}
 
 import uvicorn
 

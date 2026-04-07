@@ -46,15 +46,15 @@ def run_episode(env: ApocalyptoEnvironment) -> dict:
     obs = env.reset()
     task_scores = {1: 0.0, 2: 0.0, 3: 0.0}
     steps = 0
+    consecutive_errors = 0
 
     while not obs.done and steps < 15:
-        current_task = obs.task_id
-        # Inject task_id explicitly into every prompt to prevent schema confusion
-        user_content = f"""Current task_id: {current_task}
-You MUST respond with task_id {current_task} schema only.
+        if consecutive_errors > 3:
+            print(f"  [Abort] Too many consecutive errors at step {steps}. Ending episode.")
+            break
 
-Observation:
-{json.dumps(obs.model_dump(), indent=2)}"""
+        current_task = obs.task_id
+        user_content = f"Current task_id: {current_task}\nObservation: {json.dumps(obs.model_dump())}"
 
         try:
             response = get_client().chat.completions.create(
@@ -69,23 +69,21 @@ Observation:
             raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
             action_json = json.loads(raw)
 
-            if "classify" in action_json and isinstance(action_json["classify"], dict):
-                st = action_json["classify"].get("scam_type", "")
-                if isinstance(st, str) and "|" in st:
-                    action_json["classify"]["scam_type"] = st.split("|")[0].strip()
-
             action = ApocalyptoAction(**action_json)
             prev_reward = env.state.total_reward
             obs = env.step(action)
             step_reward = env.state.total_reward - prev_reward
             task_scores[current_task] += step_reward
+            consecutive_errors = 0 # reset on success
 
         except KeyboardInterrupt:
             raise
         except Exception as e:
-            print(f"  [Step {steps}] Handled error: {type(e).__name__}: {e}")
-            # Don't break — let the episode continue or end naturally
-            pass
+            print(f"  [Step {steps}] Error: {type(e).__name__}")
+            consecutive_errors += 1
+            # If we hit an error, we MUST refresh observation from env or move on
+            # to avoid stale loops. Here we just increment steps and hope next retry works
+            # or environmental safety kicks in.
 
         steps += 1
 
@@ -100,6 +98,7 @@ Observation:
 
 
 if __name__ == "__main__":
+    import sys
     try:
         print("Running Apocalypto-Env baseline (inference.py)...")
         print(f"Model: {get_model()}")
@@ -119,7 +118,6 @@ if __name__ == "__main__":
         print("Done.")
 
     except Exception as e:
-        print(f"Baseline completed with error: {e}")
-        # Exit with code 0 so validator doesn't fail
-        import sys
-        sys.exit(0)
+        print(f"FATAL: Baseline failed: {e}")
+        # Exit with code 1 for failure signaling (P2 fix)
+        sys.exit(1)

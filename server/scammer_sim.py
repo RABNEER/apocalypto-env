@@ -56,7 +56,7 @@ class ScammerNPC:
             return "You are wasting my time. I know what you are doing. Goodbye.", self.suspicion_level, True
             
         # 2. Evaluate Extraction Requests
-        if any(trigger in reply_lower for trigger in INTEL_TRIGGERS):
+        if any(re.search(trigger, reply_lower) for trigger in INTEL_TRIGGERS):
             msg, revealed_key = self._reveal_intel()
             if revealed_key:
                 # Agent successfully extracted it
