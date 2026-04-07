@@ -1,4 +1,14 @@
----\ntitle: Apocalypto-Env\nemoji: ???\ncolorFrom: blue\ncolorTo: red\nsdk: docker\napp_port: 7860\npinned: false\n---\n\n# 🏆 Apocalypto-Env
+---
+title: Apocalypto-Env
+emoji: 🛡️
+colorFrom: blue
+colorTo: red
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
+# 🏆 Apocalypto-Env
 
 **Meta × Hugging Face OpenEnv Hackathon India | Round 1 Submission**
 
@@ -319,4 +329,7 @@ Done.
 
 ---
 
-*Built by Ranveer | Apocalypto Labs | [apocalypto.in](https://apocalypto.in)*
+## 🎨 Visual Preview
+
+Built by **Apocalypto Labs** for the Meta × Hugging Face hackathon.
+🛡️ *Securing the next billion transactions.*
