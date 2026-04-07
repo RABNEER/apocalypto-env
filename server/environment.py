@@ -6,6 +6,15 @@ from models import ApocalyptoAction, ApocalyptoObservation, ApocalyptoState
 from .dataset import load_scam_scenarios
 from .tasks import task1_grader, task2_grader, task3_grader
 from .scammer_sim import ScammerNPC
+from .constants import (
+    MAX_TASK3_TURNS, 
+    INITIAL_TURNS_REMAINING, 
+    MAX_EPISODE_STEPS,
+    REWARD_T3_PROGRESS,
+    PENALTY_T3_SUSPICION,
+    REWARD_INTEL_EXTRACTED,
+    PENALTY_INVALID_ACTION
+)
 
 class ApocalyptoEnvironment(Environment):
     def __init__(self):
@@ -14,12 +23,25 @@ class ApocalyptoEnvironment(Environment):
         self.current_scenario = None
         self.npc: Optional[ScammerNPC] = None
         self._state_data: Optional[ApocalyptoState] = None
+        self.reward = 0.0
+        self.done = False
 
     @property
     def state(self) -> ApocalyptoState:
+        if self._state_data is None:
+            return ApocalyptoState(
+                episode_id="uninitialized",
+                current_task=1,
+                step_count=0,
+                task3_turns=0,
+                total_reward=0.0,
+                done=False
+            )
         return self._state_data
 
     def reset(self) -> ApocalyptoObservation:
+        self.reward = 0.0
+        self.done = False
         self.current_scenario = random.choice(self.scenarios)
         self.npc = ScammerNPC(self.current_scenario)
         
@@ -35,6 +57,8 @@ class ApocalyptoEnvironment(Environment):
         obs = ApocalyptoObservation(
             task_id=1,
             message=self.current_scenario["initial_message"],
+            reward=0.0,
+            done=False,
             info={"instruction": "Classify this scenario as scam or legit, and specify the type."}
         )
         return obs
@@ -42,17 +66,30 @@ class ApocalyptoEnvironment(Environment):
     def step(self, action: ApocalyptoAction) -> ApocalyptoObservation:
         """Processes one action and advances the episode state."""
         if not self._state_data:
-            raise ValueError("Environment must be reset() before calling step().")
+            # Graceful fallback instead of 500 crash
+            return ApocalyptoObservation(
+                task_id=0,
+                message="Environment Error: reset() must be called before step().",
+                reward=0.0,
+                done=True
+            )
             
         if self._state_data.done:
-            raise ValueError("Episode is already done.")
-            
-        # Global safety: prevent infinite loops if agent keep failing schemas
-        if self._state_data.step_count >= 20:
-            self._state_data.done = True
             return ApocalyptoObservation(
                 task_id=self._state_data.current_task,
-                message="Global episode step limit (20) reached. Ending episode.",
+                message="Episode is already done.",
+                reward=0.0,
+                done=True
+            )
+            
+        # Global safety: prevent infinite loops if agent keep failing schemas
+        if self._state_data.step_count >= MAX_EPISODE_STEPS:
+            self._state_data.done = True
+            self.done = True
+            return ApocalyptoObservation(
+                task_id=self._state_data.current_task,
+                message="Global episode step limit reached. Ending episode.",
+                reward=0.0,
                 done=True
             )
 
@@ -73,6 +110,8 @@ class ApocalyptoEnvironment(Environment):
                 obs = ApocalyptoObservation(
                     task_id=2,
                     message=self.current_scenario["initial_message"],
+                    reward=reward,
+                    done=False,
                     info={"instruction": "Extract all entities from the text (UPI, phone, URL, etc)."}
                 )
                 
@@ -89,8 +128,10 @@ class ApocalyptoEnvironment(Environment):
                     task_id=3,
                     message=initial_npc_msg,
                     turn_number=1,
-                    turns_remaining=5, # 1 turn used (hello), 5 remaining
+                    turns_remaining=INITIAL_TURNS_REMAINING,
                     suspicion_level="low",
+                    reward=reward,
+                    done=False,
                     info={"instruction": "Engage the scammer to extract their hidden bank account and UPI details."}
                 )
 
@@ -109,18 +150,16 @@ class ApocalyptoEnvironment(Environment):
                 # calculate diff AFTER NPC response
                 intel_this_turn = len(self.npc.extracted_by_agent) - prev_extracted
                 
-                # Per-step partial reward (signals progress throughout trajectory)
+                # Per-step partial reward
                 step_reward = 0.0
                 if suspicion_status == "low":
-                    step_reward += 0.01   # reward for maintaining cover
+                    step_reward += REWARD_T3_PROGRESS
                 elif suspicion_status == "high":
-                    step_reward -= 0.1    # penalty for getting suspicious
+                    step_reward += PENALTY_T3_SUSPICION
                 
                 # Reward intel extracted THIS turn
-                step_reward += intel_this_turn * 0.2
+                step_reward += intel_this_turn * REWARD_INTEL_EXTRACTED
                 
-                # Standardized to 6 turns max per README
-                MAX_TASK3_TURNS = 6
                 done = npc_done or self._state_data.task3_turns >= MAX_TASK3_TURNS
                 
                 if done:
@@ -137,22 +176,28 @@ class ApocalyptoEnvironment(Environment):
                 obs = ApocalyptoObservation(
                     task_id=3,
                     message=reply_msg,
-                    turn_number=self._state_data.task3_turns + 1, # Next turn is turns_used + 1
+                    turn_number=self._state_data.task3_turns + 1,
                     turns_remaining=MAX_TASK3_TURNS - self._state_data.task3_turns,
                     suspicion_level=suspicion_status,
+                    reward=reward,
                     done=done
                 )
                 
             self._state_data.total_reward += reward
             self._state_data.done = done
+            self.reward = self._state_data.total_reward
+            self.done = done
             return obs
 
         except Exception as e:
-            # Graceful degradation: penalize but don't crash
-            self._state_data.total_reward += -0.2
+            # 10/10 fix: Log the actual error for transparency
+            print(f"[RECOVERY] Step Error: {e}")
+            self._state_data.total_reward += PENALTY_INVALID_ACTION
+            self.reward = self._state_data.total_reward
             return ApocalyptoObservation(
                 task_id=self._state_data.current_task,
-                message=f"Invalid action format. Please follow the exact schema for task {self._state_data.current_task}.",
+                message=f"Invalid action format. Expected schema for task {self._state_data.current_task}.",
+                reward=PENALTY_INVALID_ACTION,
                 done=False,
-                info={"error": str(e), "penalty": -0.2}
+                info={"error": str(e), "penalty": PENALTY_INVALID_ACTION}
             )
