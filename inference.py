@@ -1,3 +1,4 @@
+
 """
 Apocalypto-Env Baseline Inference Script
 Official hackathon compliance: named inference.py, uses OpenAI client only.
@@ -68,6 +69,7 @@ def run_episode(env: ApocalyptoEnvironment, ep_idx: int) -> dict:
                     {"role": "user", "content": user_content}
                 ],
                 temperature=0.0,
+                timeout=20.0  # Bounded execution time
             )
             raw = response.choices[0].message.content
             raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
@@ -88,31 +90,25 @@ def run_episode(env: ApocalyptoEnvironment, ep_idx: int) -> dict:
         except KeyboardInterrupt:
             raise
         except Exception as e:
-            print(f"  [Step {steps}] Handled error: {type(e).__name__}: {e}")
-            # Don't break — let the episode continue or end naturally
+            # Drop the unstructured print, just continue episode
             pass
 
         steps += 1
         # Mandatory Fix: Structured JSON logging
-        print(f'[STEP] {{"episode": {ep_idx}, "task": {current_task}, "reward": {step_reward:.3f}, "done": {str(done).lower()}}}', flush=True)
+        step_str = json.dumps({"episode": ep_idx, "task": current_task, "action": "action", "reward": round(step_reward, 3), "done": done})
+        print(f"[STEP] {step_str}", flush=True)
 
     return {
         "total": env.state.total_reward,
-        "task1": task_scores[1],
-        "task2": task_scores[2],
-        "task3": task_scores[3],
-        "steps": steps,
         "score": env.state.total_reward / 3.0
     }
 
 if __name__ == "__main__":
+    import sys
     try:
-        print("Running Apocalypto-Env baseline (inference.py)...")
-        print(f"Model: {get_model()}")
-        print("-" * 40)
-        
-        # Mandatory Fix: Structured JSON logging
-        print(f'[START] {{"model": "{get_model()}", "timestamp": "{datetime.datetime.now().isoformat()}"}}', flush=True)
+        # Mandatory Fix: Structured JSON logging (ONLY this)
+        start_str = json.dumps({"model": get_model(), "timestamp": datetime.datetime.now().isoformat() + "Z"})
+        print(f"[START] {start_str}", flush=True)
 
         env = ApocalyptoEnvironment()
         results = []
@@ -120,17 +116,13 @@ if __name__ == "__main__":
         for i in range(5):
             res = run_episode(env, i + 1)
             results.append(res)
-            print(f"Episode {i+1}: Total={res['total']:.3f} | T1={res['task1']:.3f}, T2={res['task2']:.3f}, T3={res['task3']:.3f} | Steps={res['steps']}")
 
         avg = sum(r["score"] for r in results) / len(results)
-        print("-" * 40)
-        print(f"Final Baseline Reward: {avg * 3.0:.3f} / 3.0")
         
         # Mandatory Fix: Structured JSON logging
-        print(f'[END] {{"total_reward": {avg * 3.0:.3f}, "episodes": 5}}', flush=True)
-        print("Done.")
+        end_str = json.dumps({"total_reward": round(avg * 3.0, 3), "episodes": 5, "avg_score": round(avg, 3)})
+        print(f"[END] {end_str}", flush=True)
 
     except Exception as e:
-        print(f"Baseline completed with error: {e}")
-        # Exit with code 0 so validator doesn't fail
-        sys.exit(0)
+        # Exit with code 1 so validator knows it failed
+        sys.exit(1)
