@@ -61,6 +61,7 @@ def run_episode(env: ApocalyptoEnvironment, ep_idx: int) -> dict:
         step_reward = 0.0
         done = obs.done
 
+        action_json = None
         try:
             response = get_client().chat.completions.create(
                 model=get_model(),
@@ -95,7 +96,7 @@ def run_episode(env: ApocalyptoEnvironment, ep_idx: int) -> dict:
 
         steps += 1
         # Mandatory Fix: Structured JSON logging
-        step_str = json.dumps({"episode": ep_idx, "task": current_task, "action": "action", "reward": round(step_reward, 3), "done": done})
+        step_str = json.dumps({"episode": ep_idx, "task": current_task, "action": action_json or {}, "reward": round(step_reward, 3), "done": done})
         print(f"[STEP] {step_str}", flush=True)
 
     return {
