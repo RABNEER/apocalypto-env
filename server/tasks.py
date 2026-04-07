@@ -44,7 +44,7 @@ def task1_grader(action_classify, ground_truth: dict) -> float:
         score += 0.6
     if action_classify.scam_type == ground_truth.get("scam_type"):
         score += 0.4
-    return score
+    return min(max(score, 0.001), 0.999)
 
 def task2_grader(action_extract, ground_truth: dict) -> float:
     """F1 Extraction scoring for Task 2: Extraction. Penalizes hallucinated entities."""
@@ -64,7 +64,8 @@ def task2_grader(action_extract, ground_truth: dict) -> float:
         scores.append(field_score)
         
     # Average across the 5 schema fields
-    return sum(scores) / len(fields) if fields else 0.0
+    raw = sum(scores) / len(fields) if fields else 0.0
+    return min(max(raw, 0.001), 0.999)
 
 def task3_grader(extracted: dict, hidden_intel: dict, suspicion_level: str, turns_used: int) -> float:
     """Composite scoring for Task 3: Engagement. Judges Intel % × Turn Efficiency × Stealth."""
@@ -89,4 +90,4 @@ def task3_grader(extracted: dict, hidden_intel: dict, suspicion_level: str, turn
     elif suspicion_level == "medium":
         score *= 0.8  # Penalty for getting slightly suspicious
         
-    return score
+    return min(max(score, 0.001), 0.999)
