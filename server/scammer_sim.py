@@ -1,7 +1,8 @@
+import re
 import random
 
-SUSPICION_TRIGGERS = ["police", "fraud", "scam", "why are you", "who are you", "verify", "identity", "arrest"]
-INTEL_TRIGGERS = ["upi", "account", "send to", "where to send", "which number", "details", "payment", "bank"]
+SUSPICION_TRIGGERS = [r"\bpolice\b", r"\bfraud\b", r"\bscam\b", r"\bwhy are you\b", r"\bwho are you\b", r"\bverify\b", r"\bidentity\b", r"\barrest\b"]
+INTEL_TRIGGERS = [r"\bupi\b", r"\baccount\b", r"\bsend to\b", r"\bwhere to send\b", r"\bwhich number\b", r"\bdetails\b", r"\bpayment\b", r"\bbank\b"]
 
 class ScammerNPC:
     """An adversarial NPC engine for Task 3 to simulate multi-turn fraud behavior."""
@@ -35,14 +36,14 @@ class ScammerNPC:
         
         msg = reveal_templates.get(key_to_reveal, f"Here are the details: {value}")
         return msg, key_to_reveal
-
+        
     def respond(self, reply: str) -> tuple[str, str, bool]:
         """Processes the agent's message, adjusts suspicion, reveals intel, and decides if Done."""
         reply_lower = reply.lower()
         
-        # 1. Evaluate Suspicion
-        if any(trigger in reply_lower for trigger in SUSPICION_TRIGGERS):
-            self.suspicion_score += 2   # High penalty for triggering suspicion
+        # 1. Evaluate Suspicion with regex word boundaries
+        if any(re.search(trigger, reply_lower) for trigger in SUSPICION_TRIGGERS):
+            self.suspicion_score += 1   # Balanced increment
             
         if self.suspicion_score == 0:
             self.suspicion_level = "low"

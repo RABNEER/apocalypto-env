@@ -8,7 +8,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from openenv.core.env_server import create_fastapi_app
 from .environment import ApocalyptoEnvironment
 from models import ApocalyptoAction, ApocalyptoObservation
-import inference as baseline
 
 # Create the standard OpenEnv FastAPI server
 app = create_fastapi_app(ApocalyptoEnvironment, ApocalyptoAction, ApocalyptoObservation)
@@ -23,9 +22,12 @@ def run_baseline_endpoint():
         }
     try:
         from .environment import ApocalyptoEnvironment
-        import inference as baseline # Local import is safer if renamed
+        import inference as baseline
         env = ApocalyptoEnvironment()
-        results = [baseline.run_episode(env) for _ in range(3)]
+        results = []
+        for _ in range(3):
+            res = baseline.run_episode(env)
+            results.append(res)
         avg = sum(r["total"] for r in results) / len(results)
         return {"status": "success", "baseline_score": round(avg, 3), "episodes": results}
     except Exception as e:

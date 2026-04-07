@@ -4,10 +4,15 @@ from typing import List
 def normalize(value: str, field: str) -> str:
     """Normalizes extracted text to prevent simple formatting differences from breaking F1 scores."""
     if not value: return ""
+    val = value.strip().lower()
     if field in ("phone_numbers", "bank_accounts"):
-        # Strip all spaces, dashes, plus signs, and leading 91/0
-        return re.sub(r'[\s\-\+]', '', value).lstrip("91").lstrip("0")
-    return value.strip().lower()
+        # Strip all spaces, dashes, plus signs
+        val = re.sub(r'[\s\-\+]', '', val)
+        # Remove Indian country code if present at the start
+        if field == "phone_numbers" and val.startswith("91") and len(val) > 10:
+            val = val[2:]
+        return val.lstrip("0")
+    return val
 
 def f1_score_list(predicted: List[str], ground_truth: List[str], field: str) -> float:
     """Rigorous F1 scoring for extraction. Exact matching with robust normalization."""

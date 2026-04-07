@@ -40,9 +40,19 @@ class ApocalyptoEnvironment(Environment):
         return obs
 
     def step(self, action: ApocalyptoAction) -> ApocalyptoObservation:
+        """Processes one action and advances the episode state."""
         if self._state_data.done:
             raise ValueError("Episode is already done.")
             
+        # Global safety: prevent infinite loops if agent keep failing schemas
+        if self._state_data.step_count >= 20:
+            self._state_data.done = True
+            return ApocalyptoObservation(
+                task_id=self._state_data.current_task,
+                message="Global episode step limit (20) reached. Ending episode.",
+                done=True
+            )
+
         try:
             self._state_data.step_count += 1
             reward = 0.0
@@ -76,7 +86,7 @@ class ApocalyptoEnvironment(Environment):
                     task_id=3,
                     message=initial_npc_msg,
                     turn_number=1,
-                    turns_remaining=8,
+                    turns_remaining=5, # 1 turn used (hello), 5 remaining
                     suspicion_level="low",
                     info={"instruction": "Engage the scammer to extract their hidden bank account and UPI details."}
                 )
@@ -99,14 +109,16 @@ class ApocalyptoEnvironment(Environment):
                 # Per-step partial reward (signals progress throughout trajectory)
                 step_reward = 0.0
                 if suspicion_status == "low":
-                    step_reward += 0.01   # reward for maintaining cover (lowered for balance)
+                    step_reward += 0.01   # reward for maintaining cover
                 elif suspicion_status == "high":
                     step_reward -= 0.1    # penalty for getting suspicious
                 
                 # Reward intel extracted THIS turn
                 step_reward += intel_this_turn * 0.2
                 
-                done = npc_done or self._state_data.task3_turns >= 6
+                # Standardized to 6 turns max per README
+                MAX_TASK3_TURNS = 6
+                done = npc_done or self._state_data.task3_turns >= MAX_TASK3_TURNS
                 
                 if done:
                     final_reward = task3_grader(
@@ -122,8 +134,8 @@ class ApocalyptoEnvironment(Environment):
                 obs = ApocalyptoObservation(
                     task_id=3,
                     message=reply_msg,
-                    turn_number=self._state_data.task3_turns,
-                    turns_remaining=8 - self._state_data.task3_turns,
+                    turn_number=self._state_data.task3_turns + 1, # Next turn is turns_used + 1
+                    turns_remaining=MAX_TASK3_TURNS - self._state_data.task3_turns,
                     suspicion_level=suspicion_status,
                     done=done
                 )
