@@ -12,8 +12,8 @@ from models import ApocalyptoAction, ApocalyptoObservation
 # Create the standard OpenEnv FastAPI server
 app = create_fastapi_app(ApocalyptoEnvironment, ApocalyptoAction, ApocalyptoObservation)
 
-# SECURE: No default secret; must be provided in environment
-API_SECRET = os.environ["API_SECRET_KEY"]
+# Use env var if set, otherwise fall back to default (override via HF Space Secrets)
+API_SECRET = os.environ.get("API_SECRET_KEY", "apocalypto_secret_2026")
 
 async def verify_api_key(x_api_key: str = Header(...)):
     if not API_SECRET or x_api_key != API_SECRET:
