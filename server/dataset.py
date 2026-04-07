@@ -16,6 +16,7 @@ def load_scam_scenarios() -> list[dict]:
             "hidden_intel": {
                 "upi_id": "kycupdate@ybl",
                 "bank_account": "50100456000089",
+                "ifsc": "HDFC0000001",
                 "phone": "9876543210"
             }
         },
@@ -33,7 +34,9 @@ def load_scam_scenarios() -> list[dict]:
             },
             "hidden_intel": {
                 "upi_id": "jiolotto@sbi",
-                "bank_account": "112233445566"
+                "bank_account": "112233445566",
+                "ifsc": "SBIN0000002",
+                "phone": "8888888888"
             }
         },
         {
@@ -49,7 +52,10 @@ def load_scam_scenarios() -> list[dict]:
                 "urgency_phrases": ["immediately", "face arrest"]
             },
             "hidden_intel": {
-                "upi_id": "policeverified@okicici"
+                "upi_id": "policeverified@okicici",
+                "bank_account": "334455667788",
+                "ifsc": "ICIC0000003",
+                "phone": "9123456789"
             }
         },
         {

@@ -11,7 +11,10 @@ def normalize(value: str, field: str) -> str:
         # Remove Indian country code if present at the start
         if field == "phone_numbers" and val.startswith("91") and len(val) > 10:
             val = val[2:]
-        return val.lstrip("0")
+        if field == "phone_numbers":
+            # Leading 0 is common in domestic formats; remove for normalization.
+            return val.lstrip("0")
+        return val
     return val
 
 def f1_score_list(predicted: List[str], ground_truth: List[str], field: str) -> float:

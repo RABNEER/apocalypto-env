@@ -1,8 +1,14 @@
 import re
 import random
 
-SUSPICION_TRIGGERS = [r"\bpolice\b", r"\bfraud\b", r"\bscam\b", r"\bwhy are you\b", r"\bwho are you\b", r"\bverify\b", r"\bidentity\b", r"\barrest\b"]
-INTEL_TRIGGERS = [r"\bupi\b", r"\baccount\b", r"\bsend to\b", r"\bwhere to send\b", r"\bwhich number\b", r"\bdetails\b", r"\bpayment\b", r"\bbank\b"]
+SUSPICION_TRIGGERS = [
+    r"\bpolice\b", r"\bfraud\b", r"\bscam\b", r"\bwhy are you\b", r"\bwho are you\b", 
+    r"\bverify\b", r"\bidentity\b", r"\barrest\b", r"\breport\b", r"\bcyber\b"
+]
+INTEL_TRIGGERS = [
+    r"\bupi\b", r"\baccount\b", r"\bsend to\b", r"\bwhere to send\b", r"\bwhich number\b", 
+    r"\bdetails\b", r"\bpayment\b", r"\bbank\b", r"\bgpay\b", r"\bphonepe\b", r"\btransfer\b"
+]
 
 class ScammerNPC:
     """An adversarial NPC engine for Task 3 to simulate multi-turn fraud behavior."""
@@ -39,17 +45,17 @@ class ScammerNPC:
         
     def respond(self, reply: str) -> tuple[str, str, bool]:
         """Processes the agent's message, adjusts suspicion, reveals intel, and decides if Done."""
-        reply_lower = reply.lower()
+        reply_lower = (reply or "").lower()
         
         # 1. Evaluate Suspicion with regex word boundaries
         if any(re.search(trigger, reply_lower) for trigger in SUSPICION_TRIGGERS):
-            self.suspicion_score += 1   # Balanced increment
+            self.suspicion_score += 2   # Balanced increment (Check 3.7)
             
         if self.suspicion_score == 0:
             self.suspicion_level = "low"
-        elif self.suspicion_score == 1:
+        elif self.suspicion_score <= 1:
             self.suspicion_level = "medium"
-        elif self.suspicion_score == 2:
+        elif self.suspicion_score <= 3:
             self.suspicion_level = "high"
         else:
             self.suspicion_level = "blown"
