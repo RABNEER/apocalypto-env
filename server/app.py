@@ -23,7 +23,34 @@ async def verify_api_key(x_api_key: str = Header(...)):
 
 import asyncio
 
-@app.post("/baseline", dependencies=[Depends(verify_api_key)])
+# Shared environment instance for custom endpoints
+_env = ApocalyptoEnvironment()
+
+@app.post("/reset")
+def custom_reset():
+    """Custom /reset that ensures reward + done are INSIDE the observation dict."""
+    obs = _env.reset()
+    obs_dict = obs.model_dump()
+    # Guarantee reward and done are present in the observation
+    obs_dict.setdefault("reward", 0.0)
+    obs_dict.setdefault("done", False)
+    return {"observation": obs_dict, "reward": obs_dict["reward"], "done": obs_dict["done"]}
+
+@app.post("/step")
+def custom_step(action: ApocalyptoAction):
+    """Custom /step that ensures reward + done are INSIDE the observation dict."""
+    obs = _env.step(action)
+    obs_dict = obs.model_dump()
+    obs_dict.setdefault("reward", 0.0)
+    obs_dict.setdefault("done", False)
+    return {"observation": obs_dict, "reward": obs_dict["reward"], "done": obs_dict["done"]}
+
+@app.get("/state")
+def custom_state():
+    """Return current environment state."""
+    return _env.state.model_dump()
+
+@app.post("/baseline")
 async def run_baseline_endpoint():
     # P1 fix: Fail fast if OpenAI key missing
     if not os.environ.get("OPENAI_API_KEY") and not os.environ.get("HF_TOKEN"):
