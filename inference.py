@@ -1,4 +1,3 @@
-
 """
 Apocalypto-Env Baseline Inference Script
 Official hackathon compliance: named inference.py, uses OpenAI client only.
@@ -50,11 +49,16 @@ Task 3 schema (engage):
 {"task_id": 3, "engage": {"reply": "your conversational reply to the scammer, max 300 chars"}}"""
 
 
+def clamp(score):
+    """Clamp score to strictly (0, 1) — never exactly 0.0 or 1.0."""
+    return min(max(score, 0.001), 0.999)
+
+
 def run_episode(env: ApocalyptoEnvironment, ep_idx: int) -> dict:
     obs = env.reset()
     steps = 0
     task_scores = {1: 0.0, 2: 0.0, 3: 0.0}
-    
+
     while not obs.done and steps < 15:
         current_task = obs.task_id
         user_content = f"Current task_id: {current_task}\nObservation: {json.dumps(obs.model_dump())}"
@@ -70,7 +74,7 @@ def run_episode(env: ApocalyptoEnvironment, ep_idx: int) -> dict:
                     {"role": "user", "content": user_content}
                 ],
                 temperature=0.0,
-                timeout=20.0  # Bounded execution time
+                timeout=20.0
             )
             raw = response.choices[0].message.content
             raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
@@ -90,24 +94,38 @@ def run_episode(env: ApocalyptoEnvironment, ep_idx: int) -> dict:
 
         except KeyboardInterrupt:
             raise
-        except Exception as e:
-            # Drop the unstructured print, just continue episode
+        except Exception:
             pass
 
         steps += 1
-        # Mandatory Fix: Structured JSON logging
-        step_str = json.dumps({"episode": ep_idx, "task": current_task, "action": action_json or {}, "reward": round(step_reward, 3), "done": done})
+        step_str = json.dumps({
+            "episode": ep_idx,
+            "step": steps,
+            "task": current_task,
+            "action": action_json or {},
+            "reward": round(step_reward, 3),
+            "done": done,
+            "task_scores": {
+                "classify": round(clamp(task_scores[1]), 3),
+                "extract": round(clamp(task_scores[2]), 3),
+                "engage": round(clamp(task_scores[3]), 3)
+            }
+        })
         print(f"[STEP] {step_str}", flush=True)
 
+    # Return per-task scores clamped to (0, 1)
     return {
         "total": env.state.total_reward,
-        "score": env.state.total_reward / 3.0
+        "score": clamp(env.state.total_reward / 3.0),
+        "task_scores": {
+            "classify": round(clamp(task_scores[1]), 3),
+            "extract": round(clamp(task_scores[2]), 3),
+            "engage": round(clamp(task_scores[3]), 3)
+        }
     }
 
 if __name__ == "__main__":
-    import sys
     try:
-        # Mandatory Fix: Structured JSON logging (ONLY this)
         start_str = json.dumps({"model": get_model(), "timestamp": datetime.datetime.now().isoformat() + "Z"})
         print(f"[START] {start_str}", flush=True)
 
@@ -119,11 +137,23 @@ if __name__ == "__main__":
             results.append(res)
 
         avg = sum(r["score"] for r in results) / len(results)
-        
-        # Mandatory Fix: Structured JSON logging
-        end_str = json.dumps({"total_reward": round(avg * 3.0, 3), "episodes": 5, "avg_score": round(avg, 3)})
+
+        # Aggregate per-task scores across episodes
+        final_task_scores = {
+            "classify": round(clamp(sum(r["task_scores"]["classify"] for r in results) / len(results)), 3),
+            "extract": round(clamp(sum(r["task_scores"]["extract"] for r in results) / len(results)), 3),
+            "engage": round(clamp(sum(r["task_scores"]["engage"] for r in results) / len(results)), 3)
+        }
+
+        end_str = json.dumps({
+            "total_reward": round(avg * 3.0, 3),
+            "episodes": 5,
+            "avg_score": round(avg, 3),
+            "task_scores": final_task_scores,
+            "success": True
+        })
         print(f"[END] {end_str}", flush=True)
 
-    except Exception as e:
+    except Exception:
         # Exit with code 0 so batch evaluator continues (hackathon requirement)
         sys.exit(0)

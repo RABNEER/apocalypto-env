@@ -88,17 +88,17 @@ async def run_baseline_endpoint():
 def get_tasks():
     return {"tasks": [
         {
-            "task_id": 1, "name": "classify", "difficulty": "easy",
+            "id": 1, "name": "classify", "difficulty": "easy", "has_grader": True,
             "description": "Classify message as scam/legit.",
             "action_schema": {"task_id": 1, "classify": {"label": "scam|legit", "scam_type": "string"}}
         },
         {
-            "task_id": 2, "name": "extract", "difficulty": "medium",
+            "id": 2, "name": "extract", "difficulty": "medium", "has_grader": True,
             "description": "Extract entities.",
             "action_schema": {"task_id": 2, "extract": {"upi_ids": [], "phone_numbers": [], "urls": [], "bank_accounts": [], "urgency_phrases": []}}
         },
         {
-            "task_id": 3, "name": "engage", "difficulty": "hard",
+            "id": 3, "name": "engage", "difficulty": "hard", "has_grader": True,
             "description": "Multi-turn engagement.",
             "action_schema": {"task_id": 3, "engage": {"reply": "string"}}
         }
@@ -123,7 +123,7 @@ def run_grader(payload: dict):
 
     try:
         final_score = round(float(total_reward) / 3.0, 3)
-        final_score = min(max(final_score, 0.0), 1.0)
+        final_score = min(max(final_score, 0.001), 0.999)
         return {
             "status": "success",
             "score": final_score,
