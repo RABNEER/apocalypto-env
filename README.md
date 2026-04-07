@@ -1,4 +1,4 @@
-# 🏆 Apocalypto-Env
+---\ntitle: Apocalypto-Env\nemoji: ???\ncolorFrom: blue\ncolorTo: red\nsdk: docker\napp_port: 7860\npinned: false\n---\n\n# 🏆 Apocalypto-Env
 
 **Meta × Hugging Face OpenEnv Hackathon India | Round 1 Submission**
 
