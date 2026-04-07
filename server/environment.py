@@ -50,6 +50,7 @@ class ApocalyptoEnvironment(Environment):
             current_task=1,
             step_count=0,
             task3_turns=0,
+            task_reward_sum=0.0,
             total_reward=0.0,
             done=False
         )
@@ -107,6 +108,7 @@ class ApocalyptoEnvironment(Environment):
                 reward = max(0.001, min(0.999, task1_grader(action.classify, self.current_scenario["ground_truth"])))
                 
                 self._state_data.current_task = 2
+                self._state_data.task_reward_sum = 0.0 # Reset for new task
                 obs = ApocalyptoObservation(
                     task_id=2,
                     message=self.current_scenario["initial_message"],
@@ -123,6 +125,7 @@ class ApocalyptoEnvironment(Environment):
                 reward = max(0.001, min(0.999, task2_grader(action.extract, self.current_scenario["ground_truth"])))
                 
                 self._state_data.current_task = 3
+                self._state_data.task_reward_sum = 0.0 # Reset for new task
                 initial_npc_msg = self.npc.start_conversation()
                 obs = ApocalyptoObservation(
                     task_id=3,
@@ -141,42 +144,35 @@ class ApocalyptoEnvironment(Environment):
                     raise ValueError("Expected Task 3 EngageAction.")
                 
                 self._state_data.task3_turns += 1
-                
-                # snapshot BEFORE NPC response to track new extractions
                 prev_extracted = len(self.npc.extracted_by_agent)
-                
                 reply_msg, suspicion_status, npc_done = self.npc.respond(action.engage.reply)
-                
-                # calculate diff AFTER NPC response
                 intel_this_turn = len(self.npc.extracted_by_agent) - prev_extracted
-                
-                # Per-step partial reward
-                step_reward = 0.0
-                if suspicion_status == "low":
-                    step_reward += REWARD_T3_PROGRESS
-                elif suspicion_status == "high":
-                    step_reward += PENALTY_T3_SUSPICION
-                
-                # Reward intel extracted THIS turn
-                step_reward += intel_this_turn * REWARD_INTEL_EXTRACTED
                 
                 done = npc_done or self._state_data.task3_turns >= MAX_TASK3_TURNS
                 
-                # 10/10 Compliance: ensure per-step reward is strictly in (0, 1) and cumulative Task 3 fits too.
-                # We normalize the multi-step reward to avoid exceeding 1.0 total for Task 3.
-                if done:
-                    final_reward = task3_grader(
+                if not done:
+                    # Small incremental reward for progress, but capped
+                    reward = 0.01 
+                    if suspicion_status == "high": reward = 0.001
+                    if intel_this_turn > 0: reward += 0.05
+                else:
+                    # Final turn: set reward so that cumulative sum == grader_score
+                    grader_score = task3_grader(
                         extracted=self.npc.extracted_by_agent,
                         hidden_intel=self.current_scenario["hidden_intel"],
                         suspicion_level=suspicion_status,
                         turns_used=self._state_data.task3_turns
                     )
-                    reward = step_reward + final_reward
-                else:
-                    reward = step_reward
+                    # Reward should be (Target Total - Already Given)
+                    reward = grader_score - self._state_data.task_reward_sum
                 
-                # Clip to strictly (0, 1)
+                # Global safety: every STEP reward must be strictly in (0, 1)
                 reward = max(0.001, min(0.999, reward))
+                
+                # Final safety: sum of all Task 3 rewards must be in (0, 1)
+                if self._state_data.task_reward_sum + reward >= 1.0:
+                    reward = 0.999 - self._state_data.task_reward_sum
+                    reward = max(0.001, reward)
                 
                 obs = ApocalyptoObservation(
                     task_id=3,
@@ -188,6 +184,7 @@ class ApocalyptoEnvironment(Environment):
                     done=done
                 )
                 
+            self._state_data.task_reward_sum += reward
             self._state_data.total_reward += reward
             self._state_data.done = done
             self.reward = self._state_data.total_reward
@@ -197,12 +194,15 @@ class ApocalyptoEnvironment(Environment):
         except Exception as e:
             # 10/10 fix: Log the actual error for transparency
             print(f"[RECOVERY] Step Error: {e}")
-            self._state_data.total_reward += PENALTY_INVALID_ACTION
+            # Ensure negative penalty is turned into a small positive reward (e.g. 0.001) for compliance
+            safe_penalty = max(0.001, min(0.999, PENALTY_INVALID_ACTION))
+            self._state_data.task_reward_sum += safe_penalty
+            self._state_data.total_reward += safe_penalty
             self.reward = self._state_data.total_reward
             return ApocalyptoObservation(
                 task_id=self._state_data.current_task,
                 message=f"Invalid action format. Expected schema for task {self._state_data.current_task}.",
-                reward=PENALTY_INVALID_ACTION,
+                reward=safe_penalty,
                 done=False,
-                info={"error": str(e), "penalty": PENALTY_INVALID_ACTION}
+                info={"error": str(e), "penalty": safe_penalty}
             )

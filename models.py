@@ -52,5 +52,6 @@ class ApocalyptoState(BaseModel):
     current_task: int
     step_count: int               # Global steps for the entire episode
     task3_turns: int = 0          # Specifically tracks Task 3 turn limit (Max 8)
+    task_reward_sum: float = 0.0  # Tracks sum of rewards for the CURRENT task id
     total_reward: float
     done: bool

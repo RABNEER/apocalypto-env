@@ -103,7 +103,7 @@ def run_episode(env: ApocalyptoEnvironment, ep_idx: int) -> dict:
             "step": steps,
             "task": current_task,
             "action": action_json or {},
-            "reward": round(step_reward, 3),
+            "reward": round(clamp(step_reward), 3),
             "done": done,
             "task_scores": {
                 "classify": round(clamp(task_scores[1]), 3),
