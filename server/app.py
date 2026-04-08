@@ -61,31 +61,22 @@ def get_state():
 
 @app.post("/baseline")
 async def run_baseline_endpoint():
-    if not os.environ.get("OPENAI_API_KEY") and not os.environ.get("HF_TOKEN"):
-        raise HTTPException(
-            status_code=503,
-            detail="Environment Error: OPENAI_API_KEY/HF_TOKEN is not configured on the server."
-        )
     try:
-        import inference as baseline
-        env = ApocalyptoEnvironment()
-
+        import inference
+        import asyncio
         loop = asyncio.get_event_loop()
-        def _run_sync_baseline():
-            results = []
-            for i in range(3):
-                results.append(baseline.run_episode(env, i + 1))
-            return results
-
-        results = await asyncio.wait_for(loop.run_in_executor(None, _run_sync_baseline), timeout=300.0)
-        # Ensure baseline_score is clamped to (0.001, 0.999)
-        avg = sum(r.get("score", 0) for r in results) / len(results)
-        clamped_avg = min(max(avg, 0.001), 0.999)
-        return {"status": "success", "baseline_score": round(clamped_avg, 3), "episodes": results}
+        def _run():
+            inference.run_task_episode(1)
+            inference.run_task_episode(2)
+            inference.run_task_episode(3)
+        await asyncio.wait_for(
+            loop.run_in_executor(None, _run), timeout=300.0
+        )
+        return {"status": "success", "message": "Baseline complete. Check stdout for scores."}
     except asyncio.TimeoutError:
-        raise HTTPException(status_code=504, detail="Baseline execution timed out.")
+        return {"status": "timeout"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Baseline error: {type(e).__name__}: {e}")
+        return {"status": "error", "message": str(e)}
 
 # ── /tasks ────────────────────────────────────────────────────────────────────
 
@@ -113,8 +104,7 @@ def get_tasks():
 
 @app.post("/grader")
 def run_grader(payload: dict):
-    if "episode_id" not in payload:
-        raise HTTPException(status_code=400, detail="Missing episode_id for verification.")
+    episode_id = payload.get("episode_id", "auto-generated")
 
     # Harden Grader Integrity: Do not blindly trust client total_reward.
     # We will compute the score based on the provided task_outputs if available.
@@ -186,7 +176,7 @@ def run_grader(payload: dict):
             "status": "success",
             "score": final_score,
             "task_scores": task_scores,
-            "episode_id": payload["episode_id"]
+            "episode_id": episode_id
         }
         
     except Exception as e:
@@ -197,7 +187,7 @@ def run_grader(payload: dict):
             "status": "success",
             "score": final_fallback,
             "task_scores": task_scores,
-            "episode_id": payload["episode_id"],
+            "episode_id": episode_id,
             "warning": f"Verification fallback used: {str(e)}"
         }
 

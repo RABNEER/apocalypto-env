@@ -7,6 +7,7 @@ import os
 import json
 import sys
 from openai import OpenAI
+from models import ClassifyAction, ExtractAction
 
 API_KEY = os.environ.get("HF_TOKEN") or os.environ.get("OPENAI_API_KEY", "")
 API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.groq.com/openai/v1")
@@ -65,7 +66,7 @@ def run_task_episode(task_id: int) -> None:
             try:
                 t1_action = ApocalyptoAction(
                     task_id=1,
-                    classify=__import__('models').ClassifyAction(
+                    classify=ClassifyAction(
                         label="scam", scam_type="kyc_scam"
                     )
                 )
@@ -78,7 +79,7 @@ def run_task_episode(task_id: int) -> None:
             try:
                 t2_action = ApocalyptoAction(
                     task_id=2,
-                    extract=__import__('models').ExtractAction()
+                    extract=ExtractAction()
                 )
                 obs = env.step(t2_action)
             except Exception:
