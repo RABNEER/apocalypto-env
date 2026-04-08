@@ -1,13 +1,3 @@
----
-title: Apocalypto-Env
-emoji: 🛡️
-colorFrom: blue
-colorTo: red
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # 🏆 Apocalypto-Env
 
 **Meta × Hugging Face OpenEnv Hackathon India | Round 1 Submission**
