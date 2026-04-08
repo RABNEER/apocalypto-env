@@ -9,6 +9,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from openenv.core.env_server import create_fastapi_app
 from .environment import ApocalyptoEnvironment
 from models import ApocalyptoAction, ApocalyptoObservation
+from .tasks import task1_grader, task2_grader, task3_grader
+from .dataset import load_scam_scenarios
 
 # Create the standard OpenEnv FastAPI server (provides /health, /ws, etc.)
 _openenv_app = create_fastapi_app(ApocalyptoEnvironment, ApocalyptoAction, ApocalyptoObservation)
@@ -108,7 +110,7 @@ def get_tasks():
 
 # ── /grader (Check 2.3 fix: Harden integrity, no blind trust) ────────────────
 
-@app.post("/grader", dependencies=[Depends(verify_api_key)])
+@app.post("/grader")
 def run_grader(payload: dict):
     if "episode_id" not in payload:
         raise HTTPException(status_code=400, detail="Missing episode_id for verification.")
