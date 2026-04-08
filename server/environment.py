@@ -96,7 +96,7 @@ class ApocalyptoEnvironment(Environment):
 
         try:
             self._state_data.step_count += 1
-            reward = 0.0
+            reward = 0.001
             done = False
             obs = None
 
@@ -108,7 +108,7 @@ class ApocalyptoEnvironment(Environment):
                 reward = max(0.001, min(0.999, task1_grader(action.classify, self.current_scenario["ground_truth"])))
                 
                 self._state_data.current_task = 2
-                self._state_data.task_reward_sum = 0.0 # Reset for new task
+                self._state_data.task_reward_sum = 0.001 # Reset for new task
                 obs = ApocalyptoObservation(
                     task_id=2,
                     message=self.current_scenario["initial_message"],
@@ -125,7 +125,7 @@ class ApocalyptoEnvironment(Environment):
                 reward = max(0.001, min(0.999, task2_grader(action.extract, self.current_scenario["ground_truth"])))
                 
                 self._state_data.current_task = 3
-                self._state_data.task_reward_sum = 0.0 # Reset for new task
+                self._state_data.task_reward_sum = 0.001 # Reset for new task
                 initial_npc_msg = self.npc.start_conversation()
                 obs = ApocalyptoObservation(
                     task_id=3,
