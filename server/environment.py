@@ -23,7 +23,7 @@ class ApocalyptoEnvironment(Environment):
         self.current_scenario = None
         self.npc: Optional[ScammerNPC] = None
         self._state_data: Optional[ApocalyptoState] = None
-        self.reward = 0.0
+        self.reward = 0.001 # Absolute floor for validator compliance
         self.done = False
 
     @property
@@ -34,7 +34,7 @@ class ApocalyptoEnvironment(Environment):
                 current_task=1,
                 step_count=0,
                 task3_turns=0,
-                total_reward=0.0,
+                total_reward=0.001,
                 done=False
             )
         return self._state_data

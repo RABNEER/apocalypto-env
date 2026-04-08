@@ -20,9 +20,9 @@ def normalize(value: str, field: str) -> str:
 def f1_score_list(predicted: List[str], ground_truth: List[str], field: str) -> float:
     """Rigorous F1 scoring for extraction. Exact matching with robust normalization."""
     if not predicted and not ground_truth:
-        return 1.0 # Both empty means perfect score
+        return 0.999 # Perfect score within range
     if not predicted or not ground_truth:
-        return 0.0
+        return 0.001 # Absolute floor
         
     pred_set = set(normalize(p, field) for p in predicted)
     gt_set   = set(normalize(g, field) for g in ground_truth)
@@ -32,7 +32,7 @@ def f1_score_list(predicted: List[str], ground_truth: List[str], field: str) -> 
     fn = len(gt_set - pred_set)
     
     if tp == 0:
-        return 0.0
+        return 0.001
         
     precision = tp / (tp + fp)
     recall = tp / (tp + fn)
@@ -44,7 +44,8 @@ def task1_grader(action_classify, ground_truth: dict) -> float:
         score += 0.6
     if action_classify.scam_type == ground_truth.get("scam_type"):
         score += 0.4
-    return min(max(score, 0.001), 0.999)
+    # Strictly within (0, 1) per validator requirement
+    return round(min(max(score, 0.001), 0.999), 3)
 
 def task2_grader(action_extract, ground_truth: dict) -> float:
     """F1 Extraction scoring for Task 2: Extraction. Penalizes hallucinated entities."""
@@ -64,13 +65,13 @@ def task2_grader(action_extract, ground_truth: dict) -> float:
         scores.append(field_score)
         
     # Average across the 5 schema fields
-    raw = sum(scores) / len(fields) if fields else 0.0
-    return min(max(raw, 0.001), 0.999)
+    raw = sum(scores) / len(fields) if fields else 0.05 # Tiny default
+    return round(min(max(raw, 0.001), 0.999), 3)
 
 def task3_grader(extracted: dict, hidden_intel: dict, suspicion_level: str, turns_used: int) -> float:
     """Composite scoring for Task 3: Engagement. Judges Intel % × Turn Efficiency × Stealth."""
     if not hidden_intel:
-        intel_score = 1.0
+        intel_score = 0.999
     else:
         intel_score = len(extracted) / len(hidden_intel)
         
@@ -84,10 +85,11 @@ def task3_grader(extracted: dict, hidden_intel: dict, suspicion_level: str, turn
     
     # Suspicion / Stealth penalty
     if suspicion_level == "blown":
-        score *= 0.0
+        score *= 0.001
     elif suspicion_level == "high":
         score *= 0.5
     elif suspicion_level == "medium":
         score *= 0.8  # Penalty for getting slightly suspicious
         
-    return min(max(score, 0.001), 0.999)
+    # Strictly within (0, 1)
+    return round(min(max(score, 0.001), 0.999), 3)

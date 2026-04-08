@@ -120,6 +120,7 @@ def run_grader(payload: dict):
     history = payload.get("history", [])
     
     # Task Scores container
+    task_scores = {
         "1": 0.001,
         "2": 0.001,
         "3": 0.001,
