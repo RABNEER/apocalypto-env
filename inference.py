@@ -51,7 +51,7 @@ Task 3 schema (engage):
 
 def clamp(score):
     """Clamp score to strictly (0, 1) — never exactly 0.0 or 1.0."""
-    return min(max(score, 0.001), 0.999)
+    return min(max(float(score), 0.001), 0.999)
 
 
 def run_episode(env: ApocalyptoEnvironment, ep_idx: int) -> dict:
@@ -98,6 +98,17 @@ def run_episode(env: ApocalyptoEnvironment, ep_idx: int) -> dict:
             pass
 
         steps += 1
+        
+        # We report both ID-based and name-based keys to be safe with all validators
+        task_scores_report = {
+            "1": round(clamp(task_scores[1]), 3),
+            "2": round(clamp(task_scores[2]), 3),
+            "3": round(clamp(task_scores[3]), 3),
+            "classify": round(clamp(task_scores[1]), 3),
+            "extract": round(clamp(task_scores[2]), 3),
+            "engage": round(clamp(task_scores[3]), 3)
+        }
+        
         step_str = json.dumps({
             "episode": ep_idx,
             "step": steps,
@@ -105,23 +116,24 @@ def run_episode(env: ApocalyptoEnvironment, ep_idx: int) -> dict:
             "action": action_json or {},
             "reward": round(clamp(step_reward), 3),
             "done": done,
-            "task_scores": {
-                "classify": round(clamp(task_scores[1]), 3),
-                "extract": round(clamp(task_scores[2]), 3),
-                "engage": round(clamp(task_scores[3]), 3)
-            }
+            "task_scores": task_scores_report
         })
         print(f"[STEP] {step_str}", flush=True)
 
     # Return per-task scores clamped to (0, 1)
+    final_task_scores = {
+        "1": round(clamp(task_scores[1]), 3),
+        "2": round(clamp(task_scores[2]), 3),
+        "3": round(clamp(task_scores[3]), 3),
+        "classify": round(clamp(task_scores[1]), 3),
+        "extract": round(clamp(task_scores[2]), 3),
+        "engage": round(clamp(task_scores[3]), 3)
+    }
+    
     return {
         "total": env.state.total_reward,
-        "score": clamp(env.state.total_reward / 3.0),
-        "task_scores": {
-            "classify": round(clamp(task_scores[1]), 3),
-            "extract": round(clamp(task_scores[2]), 3),
-            "engage": round(clamp(task_scores[3]), 3)
-        }
+        "score": round(clamp(env.state.total_reward / 3.0), 3),
+        "task_scores": final_task_scores
     }
 
 if __name__ == "__main__":
@@ -136,19 +148,23 @@ if __name__ == "__main__":
             res = run_episode(env, i + 1)
             results.append(res)
 
-        avg = sum(r["score"] for r in results) / len(results)
+        avg_total = sum(r["total"] for r in results) / len(results)
+        avg_score = sum(r["score"] for r in results) / len(results)
 
         # Aggregate per-task scores across episodes
         final_task_scores = {
+            "1": round(clamp(sum(r["task_scores"]["1"] for r in results) / len(results)), 3),
+            "2": round(clamp(sum(r["task_scores"]["2"] for r in results) / len(results)), 3),
+            "3": round(clamp(sum(r["task_scores"]["3"] for r in results) / len(results)), 3),
             "classify": round(clamp(sum(r["task_scores"]["classify"] for r in results) / len(results)), 3),
             "extract": round(clamp(sum(r["task_scores"]["extract"] for r in results) / len(results)), 3),
             "engage": round(clamp(sum(r["task_scores"]["engage"] for r in results) / len(results)), 3)
         }
 
         end_str = json.dumps({
-            "total_reward": round(avg * 3.0, 3),
-            "episodes": 5,
-            "avg_score": round(avg, 3),
+            "total_reward": round(avg_total, 3),
+            "episodes": len(results),
+            "avg_score": round(clamp(avg_score), 3),
             "task_scores": final_task_scores,
             "success": True
         })
