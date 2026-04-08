@@ -75,8 +75,10 @@ async def run_baseline_endpoint():
             return results
 
         results = await asyncio.wait_for(loop.run_in_executor(None, _run_sync_baseline), timeout=300.0)
+        # Ensure baseline_score is clamped to (0.001, 0.999)
         avg = sum(r.get("score", 0) for r in results) / len(results)
-        return {"status": "success", "baseline_score": round(avg, 3), "episodes": results}
+        clamped_avg = min(max(avg, 0.001), 0.999)
+        return {"status": "success", "baseline_score": round(clamped_avg, 3), "episodes": results}
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="Baseline execution timed out.")
     except Exception as e:
@@ -88,17 +90,17 @@ async def run_baseline_endpoint():
 def get_tasks():
     return {"tasks": [
         {
-            "id": 1, "name": "classify", "difficulty": "easy", "has_grader": True,
+            "id": 1, "name": "classify", "difficulty": "easy", "has_grader": True, "grader": True,
             "description": "Classify message as scam/legit.",
             "action_schema": {"task_id": 1, "classify": {"label": "scam|legit", "scam_type": "string"}}
         },
         {
-            "id": 2, "name": "extract", "difficulty": "medium", "has_grader": True,
+            "id": 2, "name": "extract", "difficulty": "medium", "has_grader": True, "grader": True,
             "description": "Extract entities.",
             "action_schema": {"task_id": 2, "extract": {"upi_ids": [], "phone_numbers": [], "urls": [], "bank_accounts": [], "urgency_phrases": []}}
         },
         {
-            "id": 3, "name": "engage", "difficulty": "hard", "has_grader": True,
+            "id": 3, "name": "engage", "difficulty": "hard", "has_grader": True, "grader": True,
             "description": "Multi-turn engagement.",
             "action_schema": {"task_id": 3, "engage": {"reply": "string"}}
         }

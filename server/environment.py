@@ -40,7 +40,7 @@ class ApocalyptoEnvironment(Environment):
         return self._state_data
 
     def reset(self) -> ApocalyptoObservation:
-        self.reward = 0.0
+        self.reward = 0.001
         self.done = False
         self.current_scenario = random.choice(self.scenarios)
         self.npc = ScammerNPC(self.current_scenario)
@@ -50,15 +50,15 @@ class ApocalyptoEnvironment(Environment):
             current_task=1,
             step_count=0,
             task3_turns=0,
-            task_reward_sum=0.0,
-            total_reward=0.0,
+            task_reward_sum=0.001,
+            total_reward=0.001,
             done=False
         )
         
         obs = ApocalyptoObservation(
             task_id=1,
             message=self.current_scenario["initial_message"],
-            reward=0.0,
+            reward=0.001,
             done=False,
             info={"instruction": "Classify this scenario as scam or legit, and specify the type."}
         )
@@ -71,7 +71,7 @@ class ApocalyptoEnvironment(Environment):
             return ApocalyptoObservation(
                 task_id=0,
                 message="Environment Error: reset() must be called before step().",
-                reward=0.0,
+                reward=0.001,
                 done=True
             )
             
@@ -79,7 +79,7 @@ class ApocalyptoEnvironment(Environment):
             return ApocalyptoObservation(
                 task_id=self._state_data.current_task,
                 message="Episode is already done.",
-                reward=0.0,
+                reward=0.001,
                 done=True
             )
             
@@ -90,7 +90,7 @@ class ApocalyptoEnvironment(Environment):
             return ApocalyptoObservation(
                 task_id=self._state_data.current_task,
                 message="Global episode step limit reached. Ending episode.",
-                reward=0.0,
+                reward=0.001,
                 done=True
             )
 
@@ -192,7 +192,7 @@ class ApocalyptoEnvironment(Environment):
             return obs
 
         except Exception as e:
-            # 10/10 fix: Log the actual error for transparency
+            # Log the actual error for transparency
             print(f"[RECOVERY] Step Error: {e}")
             # Ensure negative penalty is turned into a small positive reward (e.g. 0.001) for compliance
             safe_penalty = max(0.001, min(0.999, PENALTY_INVALID_ACTION))

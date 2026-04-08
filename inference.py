@@ -51,15 +51,20 @@ Task 3 schema (engage):
 
 def clamp(score):
     """Clamp score to strictly (0, 1) — never exactly 0.0 or 1.0."""
-    return min(max(float(score), 0.001), 0.999)
+    try:
+        val = float(score)
+    except (TypeError, ValueError):
+        val = 0.001
+    return min(max(val, 0.001), 0.999)
 
 
 def run_episode(env: ApocalyptoEnvironment, ep_idx: int) -> dict:
     obs = env.reset()
     steps = 0
-    task_scores = {1: 0.0, 2: 0.0, 3: 0.0}
+    # Track cumulative rewards per task within the episode
+    task_rewards = {1: 0.0, 2: 0.0, 3: 0.0}
 
-    while not obs.done and steps < 15:
+    while not obs.done and steps < 20:
         current_task = obs.task_id
         user_content = f"Current task_id: {current_task}\nObservation: {json.dumps(obs.model_dump())}"
         step_reward = 0.0
@@ -89,24 +94,30 @@ def run_episode(env: ApocalyptoEnvironment, ep_idx: int) -> dict:
             prev_reward = env.state.total_reward
             obs = env.step(action)
             step_reward = env.state.total_reward - prev_reward
-            task_scores[current_task] += step_reward
+            
+            # Record reward under the task ID that generated it
+            if current_task in task_rewards:
+                task_rewards[current_task] += step_reward
+                
             done = obs.done
 
         except KeyboardInterrupt:
             raise
         except Exception:
+            # Default step reward on failure is 0.0, handled by clamp() in logs
             pass
 
         steps += 1
         
-        # We report both ID-based and name-based keys to be safe with all validators
-        task_scores_report = {
-            "1": round(clamp(task_scores[1]), 3),
-            "2": round(clamp(task_scores[2]), 3),
-            "3": round(clamp(task_scores[3]), 3),
-            "classify": round(clamp(task_scores[1]), 3),
-            "extract": round(clamp(task_scores[2]), 3),
-            "engage": round(clamp(task_scores[3]), 3)
+        # Build task_scores for logging: must be strictly in (0.0, 1.0)
+        # We include both ID strings and names to satisfy various validator versions
+        task_scores_log = {
+            "1": round(clamp(task_rewards[1]), 3),
+            "2": round(clamp(task_rewards[2]), 3),
+            "3": round(clamp(task_rewards[3]), 3),
+            "classify": round(clamp(task_rewards[1]), 3),
+            "extract": round(clamp(task_rewards[2]), 3),
+            "engage": round(clamp(task_rewards[3]), 3)
         }
         
         step_str = json.dumps({
@@ -116,18 +127,18 @@ def run_episode(env: ApocalyptoEnvironment, ep_idx: int) -> dict:
             "action": action_json or {},
             "reward": round(clamp(step_reward), 3),
             "done": done,
-            "task_scores": task_scores_report
+            "task_scores": task_scores_log
         })
         print(f"[STEP] {step_str}", flush=True)
 
-    # Return per-task scores clamped to (0, 1)
+    # Episode summary
     final_task_scores = {
-        "1": round(clamp(task_scores[1]), 3),
-        "2": round(clamp(task_scores[2]), 3),
-        "3": round(clamp(task_scores[3]), 3),
-        "classify": round(clamp(task_scores[1]), 3),
-        "extract": round(clamp(task_scores[2]), 3),
-        "engage": round(clamp(task_scores[3]), 3)
+        "1": round(clamp(task_rewards[1]), 3),
+        "2": round(clamp(task_rewards[2]), 3),
+        "3": round(clamp(task_rewards[3]), 3),
+        "classify": round(clamp(task_rewards[1]), 3),
+        "extract": round(clamp(task_rewards[2]), 3),
+        "engage": round(clamp(task_rewards[3]), 3)
     }
     
     return {
@@ -144,15 +155,16 @@ if __name__ == "__main__":
         env = ApocalyptoEnvironment()
         results = []
 
+        # Run 5 episodes for baseline assessment
         for i in range(5):
             res = run_episode(env, i + 1)
             results.append(res)
 
-        avg_total = sum(r["total"] for r in results) / len(results)
         avg_score = sum(r["score"] for r in results) / len(results)
 
-        # Aggregate per-task scores across episodes
-        final_task_scores = {
+        # Aggregate per-task scores across all episodes
+        # This is what the validator parses to check if 3 tasks with graders exist.
+        agg_task_scores = {
             "1": round(clamp(sum(r["task_scores"]["1"] for r in results) / len(results)), 3),
             "2": round(clamp(sum(r["task_scores"]["2"] for r in results) / len(results)), 3),
             "3": round(clamp(sum(r["task_scores"]["3"] for r in results) / len(results)), 3),
@@ -162,14 +174,14 @@ if __name__ == "__main__":
         }
 
         end_str = json.dumps({
-            "total_reward": round(avg_total, 3),
+            "total_reward": round(avg_score * 3.0, 3),
             "episodes": len(results),
             "avg_score": round(clamp(avg_score), 3),
-            "task_scores": final_task_scores,
+            "task_scores": agg_task_scores,
             "success": True
         })
         print(f"[END] {end_str}", flush=True)
 
     except Exception:
-        # Exit with code 0 so batch evaluator continues (hackathon requirement)
+        # Exit with code 0 per hackathon batch evaluation rules
         sys.exit(0)
